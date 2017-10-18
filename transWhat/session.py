@@ -132,7 +132,7 @@ class Session(YowsupApp):
 		self.logger.debug("Got rooms: %s" % rooms)
 		self.backend.handleRoomList(rooms)
 		message = "Note, you are a participant of the following groups:\n" + \
-		          "\n".join(text) + "\nIf you do not join them you will lose messages"
+				  "\n".join(text) + "\nIf you do not join them you will lose messages"
 		#self.bot.send(message)
 
 	def _updateGroups(self, response, _):
@@ -295,11 +295,11 @@ class Session(YowsupApp):
 					if notify is None:
 						notify = ""
 					self.sendGroupMessageToXMPP(buddy, partname, messageContent,
-											    timestamp, notify)
+												timestamp, notify)
 			else:
-			    self.sendMessageToXMPP(buddy, messageContent, timestamp)
+				self.sendMessageToXMPP(buddy, messageContent, timestamp)
 		except Exception as ex:
-		    self.logger.error("textMessage not delivered to XMPP: %s" % ex)
+			self.logger.error("textMessage not delivered to XMPP: %s" % ex)
 
 	# Called by superclass
 	def onImage(self, image):
@@ -341,7 +341,7 @@ class Session(YowsupApp):
 			url = media.url
 
 		if type == 'image':
-		    caption = media.caption
+			caption = media.caption
 
 		if participant is not None: # Group message
 			partname = participant.split('@')[0]
@@ -394,7 +394,25 @@ class Session(YowsupApp):
 		self.logger.debug('received VCard: %s' %
 			[ _id, _from, name, card_data, to, notify, timestamp, participant ]
 		)
-		message =  "Received VCard (not implemented yet)"
+
+		message = None
+
+		try:
+			if self.backend.specConf is not None and self.backend.specConf.__getitem__("service.web_directory") is not None and self.backend.specConf.__getitem__("service.web_url") is not None :
+				ipath = "/vcard_" + str(timestamp)  + '.vcard'
+
+				with open(self.backend.specConf.__getitem__("service.web_directory") + ipath, "wb") as f:
+					f.write(card_data)
+				message = self.backend.specConf.__getitem__("service.web_url") + ipath
+			else:
+				self.logger.warn('Received vcard: web storage not defined in config!')
+
+		except KeyError:
+			self.logger.warn('Received vcard: web storage not defined in config!')
+		
+		if not message:
+			message = 'VCard:\n' + 'Name: ' + name + '\nVCard: ' + card_data
+
 		buddy = _from.split("@")[0]
 		if participant is not None: # Group message
 			partname = participant.split('@')[0]
@@ -405,8 +423,7 @@ class Session(YowsupApp):
 				self.sendGroupMessageToXMPP(buddy, partname, message, timestamp)
 		else:
 			self.sendMessageToXMPP(buddy, message, timestamp)
-#		self.sendMessageToXMPP(buddy, card_data)
-		#self.transferFile(buddy, str(name), card_data)
+
 		self.sendReceipt(_id, _from, None, participant)
 		self.recvMsgIDs.append((_id, _from, participant, timestamp))
 
